@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +26,7 @@ public partial class MainViewModel : ObservableObject
     private readonly AppSettings _settings;
 
     private ClassIndex? _index;
+    private IReadOnlySet<string>? _uobjectDescendants;
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _scanCts;
     private bool _suppressOutputPathSave;
@@ -69,6 +71,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _companyName = string.Empty;
 
+    [ObservableProperty]
+    private bool _filterUObjectOnly;
+
+    [ObservableProperty]
+    private bool _openInExplorerAfterCreate;
+
     public ObservableCollection<ClassEntry> FilteredResults { get; } = [];
     public ObservableCollection<UProjectEntry> AvailableProjects { get; } = [];
 
@@ -90,13 +98,28 @@ public partial class MainViewModel : ObservableObject
         _projectPersistence = projectPersistence ?? new ProjectPersistence();
         _settingsService   = settingsService   ?? new SettingsService();
 
-        _settings    = _settingsService.Load();
-        _companyName = _settings.CompanyName;
+        _settings                 = _settingsService.Load();
+        _companyName              = _settings.CompanyName;
+        _filterUObjectOnly        = _settings.FilterUObjectOnly;
+        _openInExplorerAfterCreate = _settings.OpenInExplorerAfterCreate;
     }
 
     partial void OnCompanyNameChanged(string value)
     {
         _settings.CompanyName = value;
+        _settingsService.Save(_settings);
+    }
+
+    partial void OnFilterUObjectOnlyChanged(bool value)
+    {
+        _settings.FilterUObjectOnly = value;
+        _settingsService.Save(_settings);
+        UpdateFilteredResults();
+    }
+
+    partial void OnOpenInExplorerAfterCreateChanged(bool value)
+    {
+        _settings.OpenInExplorerAfterCreate = value;
         _settingsService.Save(_settings);
     }
 
@@ -149,11 +172,18 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task InitializeAsync()
     {
-        var savedPaths = _projectPersistence.Load();
-        foreach (var path in savedPaths)
+        try
         {
-            var entry = _engineLocator.ResolveForProject(path);
-            if (entry is not null) AvailableProjects.Add(entry);
+            var savedPaths = _projectPersistence.Load();
+            foreach (var path in savedPaths)
+            {
+                var entry = _engineLocator.ResolveForProject(path);
+                if (entry is not null) AvailableProjects.Add(entry);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to load saved projects: {ex.Message}";
         }
 
         if (AvailableProjects.Count > 0)
@@ -168,20 +198,28 @@ public partial class MainViewModel : ObservableObject
         string? path = RequestProjectPick?.Invoke();
         if (path is null) return;
 
-        var entry = _engineLocator.ResolveForProject(path);
-        if (entry is null)
+        try
         {
-            StatusMessage = $"Could not resolve engine for {Path.GetFileName(path)}.";
-            return;
+            var entry = _engineLocator.ResolveForProject(path);
+            if (entry is null)
+            {
+                StatusMessage = $"Could not resolve engine for {Path.GetFileName(path)}.";
+                return;
+            }
+
+            if (!AvailableProjects.Any(p => p.UProjectPath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+            {
+                AvailableProjects.Add(entry);
+                _projectPersistence.Save(AvailableProjects.Select(p => p.UProjectPath));
+            }
+
+            SelectedProject = entry;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Failed to add project: {ex.Message}";
         }
 
-        if (!AvailableProjects.Any(p => p.UProjectPath.Equals(path, StringComparison.OrdinalIgnoreCase)))
-        {
-            AvailableProjects.Add(entry);
-            _projectPersistence.Save(AvailableProjects.Select(p => p.UProjectPath));
-        }
-
-        SelectedProject = entry;
         await Task.CompletedTask;
     }
 
@@ -227,6 +265,9 @@ public partial class MainViewModel : ObservableObject
             StatusMessage = $"Created {fileName} in {OutputPath}";
             NewClassName = string.Empty;
             Description = string.Empty;
+
+            if (OpenInExplorerAfterCreate)
+                Process.Start("explorer.exe", request.OutputPath);
         }
         catch (Exception ex)
         {
@@ -275,6 +316,7 @@ public partial class MainViewModel : ObservableObject
             if (ct.IsCancellationRequested) return;
 
             _index = new ClassIndex(engineEntries.Concat(projectEntries));
+            _uobjectDescendants = null; // invalidate cached descendant set
             StatusMessage = $"{project.ProjectName} — {_index.All.Count:N0} classes ({projectEntries.Count} project)";
             UpdateFilteredResults();
 
@@ -283,6 +325,10 @@ public partial class MainViewModel : ObservableObject
                 SelectedClass = _index.All.FirstOrDefault(e => e.ClassName == lastClass);
         }
         catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Scan failed: {ex.Message}";
+        }
         finally
         {
             IsBusy = false;
@@ -343,6 +389,12 @@ public partial class MainViewModel : ObservableObject
         else
         {
             results = _index.Search(SearchText);
+        }
+
+        if (FilterUObjectOnly)
+        {
+            _uobjectDescendants ??= _index.GetUObjectDescendantNames();
+            results = results.Where(e => _uobjectDescendants.Contains(e.ClassName));
         }
 
         foreach (var entry in results)

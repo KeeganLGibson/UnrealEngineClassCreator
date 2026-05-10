@@ -23,10 +23,14 @@ public class HeaderScanner
 
         await Parallel.ForEachAsync(headerFiles, cancellationToken, async (file, ct) =>
         {
-            string content = await File.ReadAllTextAsync(file, ct);
-
-            foreach (var entry in ParseHeader(content, file, source))
-                results.Add(entry);
+            try
+            {
+                string content = await File.ReadAllTextAsync(file, ct);
+                foreach (var entry in ParseHeader(content, file, source))
+                    results.Add(entry);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch { /* skip locked or unreadable headers */ }
 
             progress?.Report(Interlocked.Increment(ref processed));
         });
@@ -36,6 +40,11 @@ public class HeaderScanner
 
     internal static IEnumerable<ClassEntry> ParseHeader(string content, string filePath, EngineSource source)
     {
+        // Normalize CRLF → LF so that $ in multiline mode matches correctly on Windows headers.
+        // ReadLine() in the old tool stripped \r automatically; ReadAllTextAsync does not.
+        if (content.Contains('\r'))
+            content = content.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+
         string moduleName = ExtractModuleName(filePath);
 
         foreach (Match match in HeaderRegex.Matches(content))

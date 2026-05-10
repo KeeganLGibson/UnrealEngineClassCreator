@@ -18,7 +18,11 @@ public class ProjectPersistence
 
     public void Save(IEnumerable<string> projectPaths)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-        File.WriteAllText(SettingsPath, JsonSerializer.Serialize(projectPaths.ToList()));
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
+            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(projectPaths.ToList()));
+        }
+        catch { /* best-effort */ }
     }
 }

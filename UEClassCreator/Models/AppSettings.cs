@@ -10,6 +10,9 @@ public class AppSettings
     public double WindowWidth  { get; set; } = 1200;
     public double WindowHeight { get; set; } = 800;
 
+    public bool FilterUObjectOnly          { get; set; } = false;
+    public bool OpenInExplorerAfterCreate  { get; set; } = false;
+
     // Per-project last state, keyed by .uproject path
     public Dictionary<string, string> LastOutputPaths      { get; set; } = new();
     public Dictionary<string, string> LastSelectedClasses  { get; set; } = new();

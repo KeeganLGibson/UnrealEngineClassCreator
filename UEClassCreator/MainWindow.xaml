@@ -65,6 +65,15 @@
                     </DockPanel>
                 </Border>
 
+                <!-- Company Name -->
+                <Border DockPanel.Dock="Top" Padding="8 6" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="Company:" VerticalAlignment="Center"
+                                   Foreground="{StaticResource BrushTextSecondary}" Margin="0 0 6 0"/>
+                        <TextBox Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </DockPanel>
+                </Border>
+
                 <!-- Search box -->
                 <Border DockPanel.Dock="Top" Padding="8 6" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
                     <Grid>
@@ -87,6 +96,11 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </Grid>
+                </Border>
+
+                <!-- UObject filter -->
+                <Border DockPanel.Dock="Top" Padding="8 5" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
+                    <CheckBox Content="UObject descendants only" IsChecked="{Binding FilterUObjectOnly}"/>
                 </Border>
 
                 <!-- Results list -->
@@ -193,7 +207,13 @@
                         <Separator/>
 
                         <!-- Direct subclasses -->
-                        <TextBlock Text="Direct Subclasses" FontWeight="SemiBold" Margin="0 0 0 6"/>
+                        <TextBlock FontWeight="SemiBold" Margin="0 0 0 6">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Direct Subclasses ({0})">
+                                    <Binding Path="TotalSubclassCount"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
 
                         <TextBlock Text="None"
                                    Foreground="{StaticResource BrushTextSecondary}"
@@ -202,7 +222,7 @@
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DirectSubclasses.Count}" Value="0">
+                                        <DataTrigger Binding="{Binding TotalSubclassCount}" Value="0">
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -210,7 +230,7 @@
                             </TextBlock.Style>
                         </TextBlock>
 
-                        <ItemsControl ItemsSource="{Binding DirectSubclasses}">
+                        <ItemsControl ItemsSource="{Binding VisibleSubclasses}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel Orientation="Horizontal"/>
@@ -221,12 +241,25 @@
                                     <Button Content="{Binding ClassName}"
                                             Margin="0 2 12 2"
                                             Style="{StaticResource LinkButton}"
-                                            Command="{Binding DataContext.SelectClassCommand,
+                                            Command="{Binding DataContext.ClassDetail.SelectSubclassCommand,
                                                       RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"/>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Show all button -->
+                        <Button Margin="0 6 0 0"
+                                Padding="10 3"
+                                HorizontalAlignment="Left"
+                                Visibility="{Binding DataContext.ClassDetail.HasMoreSubclasses,
+                                             RelativeSource={RelativeSource AncestorType=Window},
+                                             Converter={StaticResource BoolToVis}}"
+                                Content="{Binding DataContext.ClassDetail.HiddenCount,
+                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                ContentStringFormat="Show {0} more…"
+                                Command="{Binding DataContext.ClassDetail.ShowAllSubclassesCommand,
+                                          RelativeSource={RelativeSource AncestorType=Window}}"/>
 
                         <Separator Margin="0 12"/>
 
@@ -239,8 +272,6 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="8"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="8"/>
                                 <RowDefinition Height="Auto"/>
@@ -273,17 +304,10 @@
                                      Text="{Binding DataContext.Description, UpdateSourceTrigger=PropertyChanged,
                                             RelativeSource={RelativeSource AncestorType=Window}}"/>
 
-                            <!-- Company -->
-                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Company"
-                                       VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
-                            <TextBox Grid.Row="6" Grid.Column="1"
-                                     Text="{Binding DataContext.CompanyName, UpdateSourceTrigger=PropertyChanged,
-                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
-
                             <!-- Output path -->
-                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Output Path"
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Output Path"
                                        VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
-                            <DockPanel Grid.Row="8" Grid.Column="1">
+                            <DockPanel Grid.Row="6" Grid.Column="1">
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Margin="6 0 0 0"
                                         Command="{Binding DataContext.BrowseOutputPathCommand,
                                                   RelativeSource={RelativeSource AncestorType=Window}}"/>
@@ -292,13 +316,18 @@
                             </DockPanel>
                         </Grid>
 
-                        <Button Content="Create Class"
-                                Margin="0 16 0 0"
-                                Padding="20 8"
-                                HorizontalAlignment="Left"
-                                Style="{StaticResource AccentButton}"
-                                Command="{Binding DataContext.CreateClassCommand,
-                                          RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0 16 0 0">
+                            <Button Content="Create Class"
+                                    Padding="20 8"
+                                    Style="{StaticResource AccentButton}"
+                                    Command="{Binding DataContext.CreateClassCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <CheckBox Content="Open in Explorer"
+                                      Margin="14 0 0 0"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding DataContext.OpenInExplorerAfterCreate,
+                                                  RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </StackPanel>
 
                     </StackPanel>
                 </StackPanel>
