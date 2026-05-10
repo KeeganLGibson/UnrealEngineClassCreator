@@ -13,4 +13,8 @@
     <PackageReference Include="Stubble.Core" Version="1.10.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="Templates\*.mustache" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

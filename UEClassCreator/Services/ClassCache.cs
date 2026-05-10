@@ -12,17 +12,17 @@ public class ClassCache
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "UEClassCreator", "cache");
 
-    public bool TryLoad(EngineInstall engine, out List<ClassEntry> entries)
+    public bool TryLoad(string enginePath, EngineSource source, out List<ClassEntry> entries)
     {
         entries = [];
-        string cacheFile = GetCachePath(engine.Path);
+        string cacheFile = GetCachePath(enginePath);
 
         if (!File.Exists(cacheFile))
             return false;
 
         // Source builds are synced via UGS which bumps Build.version on every sync regardless
         // of whether any headers changed — only invalidate launcher installs automatically.
-        if (engine.Source == EngineSource.LauncherInstall && IsCacheStale(engine.Path, cacheFile))
+        if (source == EngineSource.LauncherInstall && IsCacheStale(enginePath, cacheFile))
             return false;
 
         try
@@ -36,10 +36,10 @@ public class ClassCache
         }
     }
 
-    public void Save(EngineInstall engine, List<ClassEntry> entries)
+    public void Save(string enginePath, List<ClassEntry> entries)
     {
         Directory.CreateDirectory(CacheDir);
-        File.WriteAllText(GetCachePath(engine.Path), JsonSerializer.Serialize(entries));
+        File.WriteAllText(GetCachePath(enginePath), JsonSerializer.Serialize(entries));
     }
 
     private static string GetCachePath(string enginePath)

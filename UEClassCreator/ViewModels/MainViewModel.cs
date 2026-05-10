@@ -20,10 +20,14 @@ public partial class MainViewModel : ObservableObject
     private readonly HeaderScanner _scanner;
     private readonly ClassCache _cache;
     private readonly ClassFileGenerator _generator;
+    private readonly ProjectPersistence _projectPersistence;
+    private readonly SettingsService _settingsService;
+    private readonly AppSettings _settings;
 
     private ClassIndex? _index;
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _scanCts;
+    private bool _suppressOutputPathSave;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -46,7 +50,7 @@ public partial class MainViewModel : ObservableObject
     private int _scanTotal;
 
     [ObservableProperty]
-    private string _statusMessage = "Ready";
+    private string _statusMessage = "Add a project to get started.";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
@@ -60,24 +64,47 @@ public partial class MainViewModel : ObservableObject
     private string _description = string.Empty;
 
     [ObservableProperty]
-    private EngineInstall? _selectedEngine;
+    private UProjectEntry? _selectedProject;
+
+    [ObservableProperty]
+    private string _companyName = string.Empty;
 
     public ObservableCollection<ClassEntry> FilteredResults { get; } = [];
-    public ObservableCollection<EngineInstall> AvailableEngines { get; } = [];
+    public ObservableCollection<UProjectEntry> AvailableProjects { get; } = [];
 
-    // Set by the View so the ViewModel stays UI-framework-agnostic
     public Func<string?>? RequestFolderPick { get; set; }
+    public Func<string?>? RequestProjectPick { get; set; }
 
     public MainViewModel(
         EngineLocator? engineLocator = null,
         HeaderScanner? scanner = null,
         ClassCache? cache = null,
-        ClassFileGenerator? generator = null)
+        ClassFileGenerator? generator = null,
+        ProjectPersistence? projectPersistence = null,
+        SettingsService? settingsService = null)
     {
-        _engineLocator = engineLocator ?? new EngineLocator();
-        _scanner = scanner ?? new HeaderScanner();
-        _cache = cache ?? new ClassCache();
-        _generator = generator ?? new ClassFileGenerator();
+        _engineLocator     = engineLocator     ?? new EngineLocator();
+        _scanner           = scanner           ?? new HeaderScanner();
+        _cache             = cache             ?? new ClassCache();
+        _generator         = generator         ?? new ClassFileGenerator();
+        _projectPersistence = projectPersistence ?? new ProjectPersistence();
+        _settingsService   = settingsService   ?? new SettingsService();
+
+        _settings    = _settingsService.Load();
+        _companyName = _settings.CompanyName;
+    }
+
+    partial void OnCompanyNameChanged(string value)
+    {
+        _settings.CompanyName = value;
+        _settingsService.Save(_settings);
+    }
+
+    partial void OnOutputPathChanged(string value)
+    {
+        if (_suppressOutputPathSave || SelectedProject is null || string.IsNullOrEmpty(value)) return;
+        _settings.LastOutputPaths[SelectedProject.UProjectPath] = value;
+        _settingsService.Save(_settings);
     }
 
     partial void OnSelectedClassChanged(ClassEntry? value)
@@ -85,6 +112,26 @@ public partial class MainViewModel : ObservableObject
         ClassDetail = value is not null && _index is not null
             ? new ClassDetailViewModel(value, _index, entry => SelectedClass = entry)
             : null;
+
+        if (value is not null && SelectedProject is not null)
+        {
+            _settings.LastSelectedClasses[SelectedProject.UProjectPath] = value.ClassName;
+            _settingsService.Save(_settings);
+        }
+    }
+
+    partial void OnSelectedProjectChanged(UProjectEntry? value)
+    {
+        if (value is null) return;
+
+        // Restore last output path for this project, or default to Source
+        _suppressOutputPathSave = true;
+        OutputPath = _settings.LastOutputPaths.TryGetValue(value.UProjectPath, out var saved) && !string.IsNullOrEmpty(saved)
+            ? saved
+            : Path.Combine(value.ProjectDirectory, "Source");
+        _suppressOutputPathSave = false;
+
+        _ = LoadProjectAsync(value, forceRescan: false);
     }
 
     partial void OnSearchTextChanged(string value)
@@ -102,31 +149,51 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task InitializeAsync()
     {
-        foreach (var engine in _engineLocator.FindInstalledEngines())
-            AvailableEngines.Add(engine);
-
-        if (AvailableEngines.Count == 0)
+        var savedPaths = _projectPersistence.Load();
+        foreach (var path in savedPaths)
         {
-            StatusMessage = "No Unreal Engine installation found.";
+            var entry = _engineLocator.ResolveForProject(path);
+            if (entry is not null) AvailableProjects.Add(entry);
+        }
+
+        if (AvailableProjects.Count > 0)
+            SelectedProject = AvailableProjects[0];
+
+        await Task.CompletedTask;
+    }
+
+    [RelayCommand]
+    private async Task AddProjectAsync()
+    {
+        string? path = RequestProjectPick?.Invoke();
+        if (path is null) return;
+
+        var entry = _engineLocator.ResolveForProject(path);
+        if (entry is null)
+        {
+            StatusMessage = $"Could not resolve engine for {Path.GetFileName(path)}.";
             return;
         }
 
-        SelectedEngine = AvailableEngines[0];
-        await LoadEngineAsync(SelectedEngine, forceRescan: false);
+        if (!AvailableProjects.Any(p => p.UProjectPath.Equals(path, StringComparison.OrdinalIgnoreCase)))
+        {
+            AvailableProjects.Add(entry);
+            _projectPersistence.Save(AvailableProjects.Select(p => p.UProjectPath));
+        }
+
+        SelectedProject = entry;
+        await Task.CompletedTask;
     }
 
     [RelayCommand]
     private async Task RescanAsync()
     {
-        if (SelectedEngine is null) return;
-        await LoadEngineAsync(SelectedEngine, forceRescan: true);
+        if (SelectedProject is null) return;
+        await LoadProjectAsync(SelectedProject, forceRescan: true);
     }
 
     [RelayCommand]
-    private void SelectClass(ClassEntry entry)
-    {
-        SelectedClass = entry;
-    }
+    private void SelectClass(ClassEntry entry) => SelectedClass = entry;
 
     [RelayCommand]
     private void BrowseOutputPath()
@@ -139,7 +206,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanCreateClass))]
     private async Task CreateClassAsync()
     {
-        if (SelectedClass is null) return;
+        if (SelectedClass is null || SelectedProject is null) return;
 
         IsBusy = true;
         StatusMessage = "Creating files...";
@@ -151,8 +218,8 @@ public partial class MainViewModel : ObservableObject
                 Description,
                 OutputPath,
                 SelectedClass,
-                ProjectName: Path.GetFileName(OutputPath.TrimEnd(Path.DirectorySeparatorChar)),
-                CompanyName: string.Empty);
+                ProjectName: SelectedProject.ProjectName,
+                CompanyName: _settings.CompanyName);
 
             await _generator.GenerateAsync(request);
 
@@ -177,32 +244,43 @@ public partial class MainViewModel : ObservableObject
         !string.IsNullOrWhiteSpace(OutputPath) &&
         !IsBusy;
 
-    private async Task LoadEngineAsync(EngineInstall engine, bool forceRescan)
+    private async Task LoadProjectAsync(UProjectEntry project, bool forceRescan)
     {
         _scanCts?.Cancel();
         _scanCts = new CancellationTokenSource();
+        var ct = _scanCts.Token;
 
         IsBusy = true;
         ScanProgress = 0;
         ScanTotal = 0;
+        _index = null;
+        FilteredResults.Clear();
 
         try
         {
-            List<ClassEntry> entries;
-
-            if (!forceRescan && _cache.TryLoad(engine, out entries))
+            List<ClassEntry> engineEntries;
+            if (!forceRescan && _cache.TryLoad(project.EnginePath, project.EngineSource, out engineEntries))
             {
-                StatusMessage = $"Loaded {entries.Count:N0} classes from cache.";
+                StatusMessage = $"Loaded {engineEntries.Count:N0} engine classes from cache.";
             }
             else
             {
-                entries = await ScanEngineAsync(engine, _scanCts.Token);
-                if (!_scanCts.Token.IsCancellationRequested)
-                    _cache.Save(engine, entries);
+                engineEntries = await ScanDirectoriesAsync(GetEngineHeaderDirs(project), project.EngineSource, ct);
+                if (!ct.IsCancellationRequested)
+                    _cache.Save(project.EnginePath, engineEntries);
             }
 
-            _index = new ClassIndex(entries);
+            var projectEntries = await ScanDirectoriesAsync(GetProjectHeaderDirs(project), EngineSource.GameProject, ct);
+
+            if (ct.IsCancellationRequested) return;
+
+            _index = new ClassIndex(engineEntries.Concat(projectEntries));
+            StatusMessage = $"{project.ProjectName} — {_index.All.Count:N0} classes ({projectEntries.Count} project)";
             UpdateFilteredResults();
+
+            // Restore last selected class for this project
+            if (_settings.LastSelectedClasses.TryGetValue(project.UProjectPath, out var lastClass))
+                SelectedClass = _index.All.FirstOrDefault(e => e.ClassName == lastClass);
         }
         catch (OperationCanceledException) { }
         finally
@@ -211,37 +289,44 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task<List<ClassEntry>> ScanEngineAsync(EngineInstall engine, CancellationToken ct)
+    private async Task<List<ClassEntry>> ScanDirectoriesAsync(
+        IEnumerable<string> dirs, EngineSource source, CancellationToken ct)
     {
-        var searchDirs = new[]
-        {
-            Path.Combine(engine.Path, "Engine", "Source"),
-            Path.Combine(engine.Path, "Engine", "Plugins"),
-        };
-
-        var files = searchDirs
+        var files = dirs
             .Where(Directory.Exists)
             .SelectMany(d => Directory.GetFiles(d, "*.h", SearchOption.AllDirectories))
             .ToList();
 
-        ScanTotal = files.Count;
+        if (files.Count == 0) return [];
+
+        ScanTotal += files.Count;
         StatusMessage = $"Scanning {ScanTotal:N0} files...";
 
+        int before = ScanProgress;
         var progress = new Progress<int>(n =>
         {
-            ScanProgress = n;
-            StatusMessage = $"Scanning... {n:N0} / {ScanTotal:N0}";
+            ScanProgress = before + n;
+            StatusMessage = $"Scanning... {ScanProgress:N0} / {ScanTotal:N0}";
         });
 
-        var entries = await _scanner.ScanAsync(files, engine.Source, progress, ct);
-        StatusMessage = $"Found {entries.Count:N0} classes.";
-        return entries;
+        return await _scanner.ScanAsync(files, source, progress, ct);
     }
+
+    private static IEnumerable<string> GetEngineHeaderDirs(UProjectEntry project) =>
+    [
+        Path.Combine(project.EnginePath, "Engine", "Source"),
+        Path.Combine(project.EnginePath, "Engine", "Plugins"),
+    ];
+
+    private static IEnumerable<string> GetProjectHeaderDirs(UProjectEntry project) =>
+    [
+        Path.Combine(project.ProjectDirectory, "Source"),
+        Path.Combine(project.ProjectDirectory, "Plugins"),
+    ];
 
     private void UpdateFilteredResults()
     {
         FilteredResults.Clear();
-
         if (_index is null) return;
 
         IEnumerable<ClassEntry> results;
