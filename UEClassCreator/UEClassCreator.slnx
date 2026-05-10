@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../UEClassCreator.Tests/UEClassCreator.Tests.csproj" />
+  <Project Path="UEClassCreator.csproj" />
+</Solution>
