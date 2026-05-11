@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -14,6 +15,9 @@ namespace UEClassCreator
         public MainWindow()
         {
             InitializeComponent();
+
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            Title = $"UE Class Creator v{version?.ToString(3)}";
 
             var vm = new MainViewModel(settingsService: _settingsService);
             vm.RequestFolderPick  = PickFolder;
