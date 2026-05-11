@@ -24,7 +24,7 @@ public class EngineLocator
         string projectDir = Path.GetDirectoryName(uprojectPath)!;
         string association = ReadEngineAssociation(uprojectPath);
 
-        // 1. Co-located source build (e.g. D:\Work\PVE\PvE\.uproject → D:\Work\PVE\Engine)
+        // 1. Co-located source build (e.g. C:\Projects\MyGame\MyGame.uproject → C:\Projects\MyGame\Engine)
         string colocatedEngine = Path.GetFullPath(Path.Combine(projectDir, "..", "Engine"));
         if (Directory.Exists(colocatedEngine))
         {
