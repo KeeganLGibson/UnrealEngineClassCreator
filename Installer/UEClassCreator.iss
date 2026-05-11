@@ -12,7 +12,7 @@
 ; for upgrades and uninstallation.
 
 #define AppName      "UE Class Creator"
-#define AppVersion   "0.1.2"
+#define AppVersion   "0.1.3"
 #define AppPublisher "Keegan Gibson"
 #define AppExeName   "UEClassCreator.exe"
 #define SourceDir    "..\UEClassCreator\bin\Publish\win-x64"

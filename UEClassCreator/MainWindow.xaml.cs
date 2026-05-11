@@ -1,6 +1,8 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using Microsoft.Win32;
 using UEClassCreator.Services;
 using UEClassCreator.ViewModels;
@@ -9,6 +11,11 @@ namespace UEClassCreator
 {
     public partial class MainWindow : Window
     {
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+        private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
         private MainViewModel ViewModel => (MainViewModel)DataContext;
         private readonly SettingsService _settingsService = new();
 
@@ -31,6 +38,14 @@ namespace UEClassCreator
         {
             _ = ViewModel.InitializeCommand.ExecuteAsync(null);
             SearchBox.Focus();
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var hwnd = new WindowInteropHelper(this).Handle;
+            int value = 1;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, Marshal.SizeOf(value));
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
