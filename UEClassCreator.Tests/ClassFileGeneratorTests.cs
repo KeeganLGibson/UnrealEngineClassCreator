@@ -111,4 +111,64 @@ public class ClassFileGeneratorTests
         string source = (string)data["ParentClassSource"];
         Assert.DoesNotContain('\\', source);
     }
+
+    // --- Project template overrides ---
+
+    [Fact]
+    public async Task GenerateAsync_UsesProjectTemplate_WhenOverrideExists()
+    {
+        // Arrange: create a temp project dir with a custom Header.mustache
+        string projectDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        string overrideDir = Path.Combine(projectDir, "build", "ClassCreator");
+        Directory.CreateDirectory(overrideDir);
+        await File.WriteAllTextAsync(Path.Combine(overrideDir, "Header.mustache"), "PROJECT_OVERRIDE {{Class}}");
+        await File.WriteAllTextAsync(Path.Combine(overrideDir, "Cpp.mustache"), "CPP {{FileName}}");
+
+        string outputDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+        try
+        {
+            var gen = new ClassFileGenerator();
+            var request = new GenerationRequest(
+                "AMyActor", "", outputDir, EngineParent, "TestGame", "TestCo",
+                ProjectDirectory: projectDir);
+
+            await gen.GenerateAsync(request);
+
+            string headerContent = await File.ReadAllTextAsync(Path.Combine(outputDir, "MyActor.h"));
+            Assert.Contains("PROJECT_OVERRIDE", headerContent);
+        }
+        finally
+        {
+            if (Directory.Exists(projectDir)) Directory.Delete(projectDir, recursive: true);
+            if (Directory.Exists(outputDir))  Directory.Delete(outputDir,  recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task GenerateAsync_FallsBackToDefaultTemplate_WhenNoOverride()
+    {
+        string outputDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        string templatesDir = Path.Combine(AppContext.BaseDirectory, "Templates");
+
+        // Only run if the app templates are present (i.e. in a full build output)
+        if (!Directory.Exists(templatesDir))
+            return;
+
+        try
+        {
+            var gen = new ClassFileGenerator();
+            var request = new GenerationRequest(
+                "AMyActor", "", outputDir, EngineParent, "TestGame", "TestCo",
+                ProjectDirectory: Path.GetTempPath()); // no build/ClassCreator here
+
+            await gen.GenerateAsync(request);
+
+            Assert.True(File.Exists(Path.Combine(outputDir, "MyActor.h")));
+        }
+        finally
+        {
+            if (Directory.Exists(outputDir)) Directory.Delete(outputDir, recursive: true);
+        }
+    }
 }

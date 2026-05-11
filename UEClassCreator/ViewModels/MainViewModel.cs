@@ -257,7 +257,8 @@ public partial class MainViewModel : ObservableObject
                 OutputPath,
                 SelectedClass,
                 ProjectName: SelectedProject.ProjectName,
-                CompanyName: _settings.CompanyName);
+                CompanyName: _settings.CompanyName,
+                ProjectDirectory: SelectedProject.ProjectDirectory);
 
             await _generator.GenerateAsync(request);
 

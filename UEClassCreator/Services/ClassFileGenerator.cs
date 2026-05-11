@@ -12,7 +12,8 @@ public record GenerationRequest(
     ClassEntry ParentClass,
     string ProjectName,
     string CompanyName,
-    string? CustomCopyright = null
+    string? CustomCopyright = null,
+    string ProjectDirectory = ""
 );
 
 public class ClassFileGenerator
@@ -40,23 +41,35 @@ public class ClassFileGenerator
 
         if (isStruct)
         {
-            string template = await File.ReadAllTextAsync(Path.Combine(_templatesDir, "Struct.mustache"));
+            string template = await File.ReadAllTextAsync(ResolveTemplate("Struct.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
                 Path.Combine(request.OutputPath, fileName + ".h"),
                 stubble.Render(template, data));
         }
         else
         {
-            string headerTemplate = await File.ReadAllTextAsync(Path.Combine(_templatesDir, "Header.mustache"));
+            string headerTemplate = await File.ReadAllTextAsync(ResolveTemplate("Header.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
                 Path.Combine(request.OutputPath, fileName + ".h"),
                 stubble.Render(headerTemplate, data));
 
-            string cppTemplate = await File.ReadAllTextAsync(Path.Combine(_templatesDir, "Cpp.mustache"));
+            string cppTemplate = await File.ReadAllTextAsync(ResolveTemplate("Cpp.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
                 Path.Combine(request.OutputPath, fileName + ".cpp"),
                 stubble.Render(cppTemplate, data));
         }
+    }
+
+    // Checks {projectDir}/build/ClassCreator/{name} first; falls back to the app's Templates dir.
+    private string ResolveTemplate(string fileName, string projectDirectory)
+    {
+        if (!string.IsNullOrEmpty(projectDirectory))
+        {
+            string projectOverride = Path.Combine(projectDirectory, "build", "ClassCreator", fileName);
+            if (File.Exists(projectOverride))
+                return projectOverride;
+        }
+        return Path.Combine(_templatesDir, fileName);
     }
 
     internal Dictionary<string, object> BuildData(GenerationRequest request)
