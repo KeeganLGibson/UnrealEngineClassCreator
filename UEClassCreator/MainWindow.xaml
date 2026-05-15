@@ -292,10 +292,26 @@
 
                             <!-- Class name -->
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Class Name"
-                                       VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="ClassNameBox"
-                                     Text="{Binding DataContext.NewClassName, UpdateSourceTrigger=PropertyChanged,
-                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                       VerticalAlignment="Top" Margin="0 6 0 0" Foreground="{StaticResource BrushTextSecondary}"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1">
+                                <TextBox x:Name="ClassNameBox"
+                                         Text="{Binding DataContext.NewClassName, UpdateSourceTrigger=PropertyChanged,
+                                                RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <TextBlock Foreground="#E07B00" FontSize="11" Margin="2 3 0 0"
+                                           Text="{Binding DataContext.ClassNameWarning,
+                                                  RelativeSource={RelativeSource AncestorType=Window}}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.ClassNameWarning,
+                                                             RelativeSource={RelativeSource AncestorType=Window}}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
 
                             <!-- Description -->
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Description"

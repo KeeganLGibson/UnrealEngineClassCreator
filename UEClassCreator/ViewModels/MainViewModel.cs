@@ -30,6 +30,7 @@ public partial class MainViewModel : ObservableObject
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _scanCts;
     private bool _suppressOutputPathSave;
+    private string? _requiredPrefix;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -57,6 +58,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
     private string _newClassName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
+    private string _classNameWarning = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
@@ -141,6 +146,45 @@ public partial class MainViewModel : ObservableObject
             _settings.LastSelectedClasses[SelectedProject.UProjectPath] = value.ClassName;
             _settingsService.Save(_settings);
         }
+
+        UpdateRequiredPrefix(value);
+        UpdateClassNameWarning();
+    }
+
+    partial void OnNewClassNameChanged(string value) => UpdateClassNameWarning();
+
+    private void UpdateRequiredPrefix(ClassEntry? selectedClass)
+    {
+        _requiredPrefix = null;
+        if (selectedClass is null || _index is null) return;
+
+        bool isActorDerived = selectedClass.ClassName == "AActor"
+            || _index.GetAncestry(selectedClass).Any(e => e.ClassName == "AActor");
+
+        if (isActorDerived)
+        {
+            _requiredPrefix = "A";
+            return;
+        }
+
+        bool isUObjectDerived = selectedClass.ClassName == "UObject"
+            || _index.GetAncestry(selectedClass).Any(e => e.ClassName == "UObject");
+
+        if (isUObjectDerived)
+            _requiredPrefix = "U";
+    }
+
+    private void UpdateClassNameWarning()
+    {
+        if (_requiredPrefix is null || string.IsNullOrWhiteSpace(NewClassName))
+        {
+            ClassNameWarning = string.Empty;
+            return;
+        }
+
+        ClassNameWarning = NewClassName.StartsWith(_requiredPrefix, StringComparison.Ordinal)
+            ? string.Empty
+            : $"Class name should start with '{_requiredPrefix}' for this parent type.";
     }
 
     partial void OnSelectedProjectChanged(UProjectEntry? value)
@@ -285,6 +329,7 @@ public partial class MainViewModel : ObservableObject
 
     private bool CanCreateClass() =>
         !string.IsNullOrWhiteSpace(NewClassName) &&
+        string.IsNullOrEmpty(ClassNameWarning) &&
         SelectedClass is not null &&
         !string.IsNullOrWhiteSpace(OutputPath) &&
         !IsBusy;
@@ -323,6 +368,8 @@ public partial class MainViewModel : ObservableObject
             _uobjectDescendants = null; // invalidate cached descendant set
             StatusMessage = $"{project.ProjectName} — {_index.All.Count:N0} classes ({projectEntries.Count} project)";
             UpdateFilteredResults();
+            UpdateRequiredPrefix(SelectedClass);
+            UpdateClassNameWarning();
 
             // Restore last selected class for this project
             if (_settings.LastSelectedClasses.TryGetValue(project.UProjectPath, out var lastClass))
