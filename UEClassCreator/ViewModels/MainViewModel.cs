@@ -263,12 +263,15 @@ public partial class MainViewModel : ObservableObject
             await _generator.GenerateAsync(request);
 
             string fileName = ClassFileGenerator.GetFileName(NewClassName);
-            StatusMessage = $"Created {fileName} in {OutputPath}";
+            var (headerOut, cppOut) = ClassFileGenerator.ResolveOutputPaths(OutputPath);
+            StatusMessage = headerOut == cppOut
+                ? $"Created {fileName} in {headerOut}"
+                : $"Created {fileName}.h → Public, {fileName}.cpp → Private";
             NewClassName = string.Empty;
             Description = string.Empty;
 
             if (OpenInExplorerAfterCreate)
-                Process.Start("explorer.exe", request.OutputPath);
+                Process.Start("explorer.exe", headerOut);
         }
         catch (Exception ex)
         {

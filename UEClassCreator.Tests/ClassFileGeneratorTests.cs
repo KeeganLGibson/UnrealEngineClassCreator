@@ -112,6 +112,42 @@ public class ClassFileGeneratorTests
         Assert.DoesNotContain('\\', source);
     }
 
+    // --- ResolveOutputPaths ---
+
+    [Theory]
+    [InlineData(@"C:\PvE\Source\ClassCreator\Private\systems\design",
+                @"C:\PvE\Source\ClassCreator\Public\systems\design",
+                @"C:\PvE\Source\ClassCreator\Private\systems\design")]
+    [InlineData(@"C:\PvE\Source\ClassCreator\Public\systems\design",
+                @"C:\PvE\Source\ClassCreator\Public\systems\design",
+                @"C:\PvE\Source\ClassCreator\Private\systems\design")]
+    [InlineData(@"C:\PvE\Source\ClassCreator\Private",
+                @"C:\PvE\Source\ClassCreator\Public",
+                @"C:\PvE\Source\ClassCreator\Private")]
+    [InlineData(@"C:\PvE\Source\ClassCreator\Public",
+                @"C:\PvE\Source\ClassCreator\Public",
+                @"C:\PvE\Source\ClassCreator\Private")]
+    [InlineData(@"C:\PvE\Plugins\MyPlugin\Source\MyPlugin\Private\Foo",
+                @"C:\PvE\Plugins\MyPlugin\Source\MyPlugin\Public\Foo",
+                @"C:\PvE\Plugins\MyPlugin\Source\MyPlugin\Private\Foo")]
+    public void ResolveOutputPaths_SplitsPublicAndPrivate(string input, string expectedHeader, string expectedCpp)
+    {
+        var (header, cpp) = ClassFileGenerator.ResolveOutputPaths(input);
+        Assert.Equal(expectedHeader, header);
+        Assert.Equal(expectedCpp, cpp);
+    }
+
+    [Theory]
+    [InlineData(@"C:\PvE\Source\ClassCreator\Shared")]        // no Public/Private
+    [InlineData(@"C:\PvE\ClassCreator\Private\systems")]      // Private before Source, not after
+    [InlineData(@"C:\PublicProject\myfiles")]        // no Source segment at all
+    public void ResolveOutputPaths_ReturnsSamePathWhenNoPublicPrivateAfterSource(string input)
+    {
+        var (header, cpp) = ClassFileGenerator.ResolveOutputPaths(input);
+        Assert.Equal(input, header);
+        Assert.Equal(input, cpp);
+    }
+
     // --- Project template overrides ---
 
     [Fact]

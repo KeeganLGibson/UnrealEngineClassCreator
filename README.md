@@ -13,6 +13,7 @@ A fast, offline Windows desktop tool for generating Unreal Engine C++ class boil
 - **Automatic engine discovery** — finds both source builds and Launcher-installed engines
 - **Game project scanning** — indexes your own project's classes alongside engine classes; supports multiple projects
 - **Mustache templates** — generates `.h` + `.cpp` pairs with correct `#include` paths, `UCLASS()`, `GENERATED_BODY()`, and module-aware include ordering
+- **Smart Public/Private output routing** — when the output path contains a `Public` or `Private` directory under a `Source` folder, the `.h` is automatically placed in the `Public` branch and the `.cpp` in `Private`, regardless of which one you typed. Works for game modules and plugins alike.
 - **Per-project template overrides** — drop custom `Header.mustache`, `Cpp.mustache`, or `Struct.mustache` into `{ProjectDir}/build/ClassCreator/` to override the defaults for that project
 - **Persistent settings** — remembers your last output path and selected class per project
 - **Fully offline** — no network dependency
@@ -37,6 +38,33 @@ The tool finds installed engines from:
 - **Source builds** — Windows registry (`HKCU\Software\Epic Games\Unreal Engine\Builds`)
 
 Scanned engine classes are cached to `%LOCALAPPDATA%\UEClassCreator\cache\` and reused until the engine version changes.
+
+---
+
+## Output Path Routing
+
+When you choose an output path that contains a `Public` or `Private` directory anywhere beneath a `Source` folder, the tool automatically splits the output:
+
+| `.h` goes to | `.cpp` goes to |
+|---|---|
+| `…/Source/…/Public/…` | `…/Source/…/Private/…` |
+
+This works whether you type the `Public` path, the `Private` path, or anywhere in between — the tool normalises to the correct branch for each file.
+
+**Examples**
+
+```
+Input path                              → .h destination                   .cpp destination
+──────────────────────────────────────────────────────────────────────────────────────────
+/PvE/Source/MyModule/Private/systems/design  → MyModule/Public/systems/design          MyModule/Private/systems/design
+/PvE/Source/MyModule/Public/systems/design   → MyModule/Public/systems/design          MyModule/Private/systems/design
+/PvE/Source/MyModule/Private                 → MyModule/Public                         MyModule/Private
+/PvE/Plugins/Combat/Source/Combat/Private/AI
+                                       → Combat/Public/AI                  Combat/Private/AI
+/PvE/Source/MyModule/Shared                  → MyModule/Shared                         MyModule/Shared  (no split)
+```
+
+The check only applies to the portion of the path **after** the first `Source` segment, so a project or plugin folder named `Public` or `Private` above the `Source` directory has no effect.
 
 ---
 

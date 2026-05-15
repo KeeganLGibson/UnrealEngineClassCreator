@@ -19,6 +19,8 @@ public record GenerationRequest(
 public class ClassFileGenerator
 {
     private static readonly Regex UClassPrefixRegex = new(@"^[AU][A-Z]", RegexOptions.Compiled);
+    private static readonly Regex SourceSegmentRegex = new(@"[/\\]source[/\\]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PublicPrivateSegmentRegex = new(@"[/\\](public|private)([/\\]|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private readonly string _templatesDir;
 
@@ -27,12 +29,36 @@ public class ClassFileGenerator
         _templatesDir = templatesDir ?? Path.Combine(AppContext.BaseDirectory, "Templates");
     }
 
+    // Splits an output path into header (Public) and cpp (Private) directories when the
+    // path contains a Public or Private segment after a Source segment. Both return values
+    // are the same when no such structure is detected.
+    public static (string headerPath, string cppPath) ResolveOutputPaths(string outputPath)
+    {
+        var sourceMatch = SourceSegmentRegex.Match(outputPath);
+        if (!sourceMatch.Success)
+            return (outputPath, outputPath);
+
+        string afterSource = outputPath[sourceMatch.Index..];
+        var ppMatch = PublicPrivateSegmentRegex.Match(afterSource);
+        if (!ppMatch.Success)
+            return (outputPath, outputPath);
+
+        // Replace the "Public"/"Private" word in-place, preserving surrounding separators.
+        int wordStart = sourceMatch.Index + ppMatch.Index + 1; // +1 skips the leading separator
+        int wordEnd = wordStart + ppMatch.Groups[1].Length;
+
+        string headerPath = outputPath[..wordStart] + "Public" + outputPath[wordEnd..];
+        string cppPath    = outputPath[..wordStart] + "Private" + outputPath[wordEnd..];
+        return (headerPath, cppPath);
+    }
+
     public async Task GenerateAsync(GenerationRequest request)
     {
+        var (headerPath, cppPath) = ResolveOutputPaths(request.OutputPath);
         var stubble = new StubbleBuilder().Build();
-        var data = BuildData(request);
+        var data = BuildData(request, headerPath);
 
-        Directory.CreateDirectory(request.OutputPath);
+        Directory.CreateDirectory(headerPath);
 
         string fileName = GetFileName(request.ClassName);
         bool isStruct = request.ParentClass.ClassName.Length > 1
@@ -43,19 +69,20 @@ public class ClassFileGenerator
         {
             string template = await File.ReadAllTextAsync(ResolveTemplate("Struct.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
-                Path.Combine(request.OutputPath, fileName + ".h"),
+                Path.Combine(headerPath, fileName + ".h"),
                 stubble.Render(template, data));
         }
         else
         {
             string headerTemplate = await File.ReadAllTextAsync(ResolveTemplate("Header.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
-                Path.Combine(request.OutputPath, fileName + ".h"),
+                Path.Combine(headerPath, fileName + ".h"),
                 stubble.Render(headerTemplate, data));
 
+            Directory.CreateDirectory(cppPath);
             string cppTemplate = await File.ReadAllTextAsync(ResolveTemplate("Cpp.mustache", request.ProjectDirectory));
             await File.WriteAllTextAsync(
-                Path.Combine(request.OutputPath, fileName + ".cpp"),
+                Path.Combine(cppPath, fileName + ".cpp"),
                 stubble.Render(cppTemplate, data));
         }
     }
@@ -72,7 +99,7 @@ public class ClassFileGenerator
         return Path.Combine(_templatesDir, fileName);
     }
 
-    internal Dictionary<string, object> BuildData(GenerationRequest request)
+    internal Dictionary<string, object> BuildData(GenerationRequest request, string? headerPath = null)
     {
         string fileName = GetFileName(request.ClassName);
         bool isUClass = UClassPrefixRegex.IsMatch(request.ParentClass.ClassName);
@@ -83,7 +110,7 @@ public class ClassFileGenerator
             ["Class"] = request.ClassName,
             ["FileName"] = fileName,
             ["ParentClass"] = request.ParentClass.ClassName,
-            ["ParentClassSource"] = ComputeParentClassSource(request),
+            ["ParentClassSource"] = ComputeParentClassSource(request, headerPath ?? request.OutputPath),
             ["ModuleName"] = request.ParentClass.ModuleName,
             ["ProjectName"] = request.ProjectName,
             ["ProjectCompany"] = request.CompanyName,
@@ -99,10 +126,10 @@ public class ClassFileGenerator
         return data;
     }
 
-    private static string ComputeParentClassSource(GenerationRequest request)
+    private static string ComputeParentClassSource(GenerationRequest request, string fromPath)
     {
         string parentDir = Path.GetDirectoryName(request.ParentClass.HeaderPath) ?? string.Empty;
-        string relative = Path.GetRelativePath(request.OutputPath, parentDir);
+        string relative = Path.GetRelativePath(fromPath, parentDir);
         return relative.Replace('\\', '/').TrimEnd('/') + "/" + Path.GetFileName(request.ParentClass.HeaderPath);
     }
 
