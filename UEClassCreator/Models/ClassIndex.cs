@@ -24,7 +24,16 @@ public class ClassIndex
             .Where(e =>
                 e.ClassName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 e.ParentClass.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(e => GetSearchRank(e, query))
             .ToList();
+    }
+
+    private static int GetSearchRank(ClassEntry e, string query)
+    {
+        if (e.ClassName.Equals(query, StringComparison.OrdinalIgnoreCase)) return 0;
+        if (e.ClassName.StartsWith(query, StringComparison.OrdinalIgnoreCase)) return 1;
+        if (e.ClassName.Contains(query, StringComparison.OrdinalIgnoreCase)) return 2;
+        return 3; // parent-only match
     }
 
     // Returns ancestry chain from root down to (but not including) the given entry.
