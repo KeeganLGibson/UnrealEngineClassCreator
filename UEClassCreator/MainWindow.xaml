@@ -12,8 +12,14 @@
 
         <!-- Status Bar -->
         <StatusBar DockPanel.Dock="Bottom">
-            <StatusBarItem Content="{Binding StatusMessage}" HorizontalAlignment="Left"/>
-            <StatusBarItem HorizontalAlignment="Right">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <DockPanel LastChildFill="True"/>
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+
+            <!-- Progress (rightmost) -->
+            <StatusBarItem DockPanel.Dock="Right">
                 <StackPanel Orientation="Horizontal" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                     <ProgressBar Width="160" Height="10" Margin="0 0 8 0"
                                  Minimum="0" Maximum="{Binding ScanTotal}"
@@ -22,6 +28,64 @@
                                  Background="#005A9E" Foreground="White"/>
                 </StackPanel>
             </StatusBarItem>
+
+            <!-- Update notification (right of status message) -->
+            <StatusBarItem DockPanel.Dock="Right" Padding="0"
+                           Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Separator Style="{StaticResource {x:Static StatusBar.SeparatorStyleKey}}"/>
+                    <Button Content="{Binding UpdateBannerText}"
+                            Command="{Binding OpenUpdateCommand}"
+                            Cursor="Hand"
+                            ToolTip="Click to open the release page">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background"      Value="#1D7D1D"/>
+                                <Setter Property="BorderBrush"     Value="#267A26"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="Foreground"      Value="White"/>
+                                <Setter Property="FontWeight"      Value="Bold"/>
+                                <Setter Property="FontFamily"      Value="Segoe UI"/>
+                                <Setter Property="FontSize"        Value="12"/>
+                                <Setter Property="Padding"         Value="10 2"/>
+                                <Setter Property="Margin"          Value="6 2 8 2"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="3"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    Margin="{TemplateBinding Margin}">
+                                                <TextBlock x:Name="Txt"
+                                                           Text="{TemplateBinding Content}"
+                                                           Foreground="{TemplateBinding Foreground}"
+                                                           FontWeight="{TemplateBinding FontWeight}"
+                                                           FontFamily="{TemplateBinding FontFamily}"
+                                                           FontSize="{TemplateBinding FontSize}"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd"  Property="Background"  Value="#258A25"/>
+                                                    <Setter TargetName="Txt" Property="TextDecorations" Value="Underline"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#186018"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </StatusBarItem>
+
+            <!-- Status message (fills remaining space) -->
+            <StatusBarItem Content="{Binding StatusMessage}"/>
         </StatusBar>
 
         <!-- Main layout: left panel | splitter | right panel -->

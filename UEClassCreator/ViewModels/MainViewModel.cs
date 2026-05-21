@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ClassFileGenerator _generator;
     private readonly ProjectPersistence _projectPersistence;
     private readonly SettingsService _settingsService;
+    private readonly UpdateCheckService _updateCheck;
     private readonly AppSettings _settings;
 
     private ClassIndex? _index;
@@ -113,6 +114,16 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _openInExplorerAfterCreate;
 
+    [ObservableProperty]
+    private bool _updateAvailable;
+
+    [ObservableProperty]
+    private string _updateBannerText = string.Empty;
+
+    [ObservableProperty]
+    private string _updateUrl = string.Empty;
+
+
     public ObservableCollection<ClassEntry> FilteredResults { get; } = [];
     public ObservableCollection<UProjectEntry> AvailableProjects { get; } = [];
 
@@ -125,7 +136,8 @@ public partial class MainViewModel : ObservableObject
         ClassCache? cache = null,
         ClassFileGenerator? generator = null,
         ProjectPersistence? projectPersistence = null,
-        SettingsService? settingsService = null)
+        SettingsService? settingsService = null,
+        UpdateCheckService? updateCheck = null)
     {
         _engineLocator     = engineLocator     ?? new EngineLocator();
         _scanner           = scanner           ?? new HeaderScanner();
@@ -133,6 +145,7 @@ public partial class MainViewModel : ObservableObject
         _generator         = generator         ?? new ClassFileGenerator();
         _projectPersistence = projectPersistence ?? new ProjectPersistence();
         _settingsService   = settingsService   ?? new SettingsService();
+        _updateCheck       = updateCheck       ?? new UpdateCheckService();
 
         _settings                 = _settingsService.Load();
         _companyName              = _settings.CompanyName;
@@ -270,7 +283,24 @@ public partial class MainViewModel : ObservableObject
         if (AvailableProjects.Count > 0)
             SelectedProject = AvailableProjects[0];
 
-        await Task.CompletedTask;
+        _ = CheckForUpdateAsync();
+    }
+
+    private async Task CheckForUpdateAsync()
+    {
+        var info = await _updateCheck.CheckAsync();
+        if (info is null) return;
+
+        UpdateUrl         = info.ReleaseUrl;
+        UpdateBannerText  = $"↑  v{info.Version} available";
+        UpdateAvailable   = true;
+    }
+
+    [RelayCommand]
+    private void OpenUpdate()
+    {
+        if (!string.IsNullOrEmpty(UpdateUrl))
+            Process.Start(new ProcessStartInfo(UpdateUrl) { UseShellExecute = true });
     }
 
     [RelayCommand]
