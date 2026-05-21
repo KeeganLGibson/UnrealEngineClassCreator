@@ -9,26 +9,25 @@
 
 #pragma once
 
-// Library Includes{{^bIsGameModule}}
-#include "{{ParentClassSource}}"{{/bIsGameModule}}
+// Library Includes{{^bIsGameModule}}{{#bHasParent}}
+#include "{{ParentClassSource}}"{{/bHasParent}}{{/bIsGameModule}}
 
-// Local Includes{{#bIsGameModule}}
-#include "{{ParentClassSource}}"{{/bIsGameModule}}
+// Local Includes{{#bIsGameModule}}{{#bHasParent}}
+#include "{{ParentClassSource}}"{{/bHasParent}}{{/bIsGameModule}}
 
-// This Includes{{#bIsUClass}}
-#include "{{FileName}}.generated.h"{{/bIsUClass}}
+// This Includes{{#bIsUStruct}}
+#include "{{FileName}}.generated.h"{{/bIsUStruct}}
 
 // Types
 
 // Constants
 
 // Prototypes
-{{#bIsUClass}}
+{{#bIsUStruct}}
 // {{Description}}
-USTRUCT(){{/bIsUClass}}
-struct {{Class}}{{#ParentClass}} : public {{ParentClass}}{{/ParentClass}}
+USTRUCT()
+{{/bIsUStruct}}struct {{Class}}{{#ParentClass}} : public {{ParentClass}}{{/ParentClass}}
 {
-{{#bIsUClass}}	GENERATED_BODY()
-{{/bIsUClass}}
-
+{{#bIsUStruct}}	GENERATED_BODY()
+{{/bIsUStruct}}
 };

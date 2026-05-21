@@ -9,11 +9,11 @@
 
 #pragma once
 
-// Library Includes{{^bIsGameModule}}
-#include "{{ParentClassSource}}"{{/bIsGameModule}}
+// Library Includes{{^bIsGameModule}}{{#bHasParent}}
+#include "{{ParentClassSource}}"{{/bHasParent}}{{/bIsGameModule}}
 
-// Local Includes{{#bIsGameModule}}
-#include "{{ParentClassSource}}"{{/bIsGameModule}}
+// Local Includes{{#bIsGameModule}}{{#bHasParent}}
+#include "{{ParentClassSource}}"{{/bHasParent}}{{/bIsGameModule}}
 
 // This Includes{{#bIsUClass}}
 #include "{{FileName}}.generated.h"{{/bIsUClass}}

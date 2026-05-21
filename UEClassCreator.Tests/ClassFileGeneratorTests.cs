@@ -91,7 +91,7 @@ public class ClassFileGeneratorTests
     [Fact]
     public void BuildData_CustomCopyright_IncludedWhenSet()
     {
-        var req = new GenerationRequest("AMyActor", "desc", @"C:/out", EngineParent, "MyGame", "Co", "Copyright 2026 Me");
+        var req = new GenerationRequest("AMyActor", "desc", @"C:/out", EngineParent, "MyGame", "Co", CustomCopyright: "Copyright 2026 Me");
         var data = new ClassFileGenerator().BuildData(req);
         Assert.True(data.ContainsKey("CustomCopyright"));
         Assert.Equal("Copyright 2026 Me", data["CustomCopyright"]);

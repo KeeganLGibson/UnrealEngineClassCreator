@@ -40,7 +40,38 @@ public partial class MainViewModel : ObservableObject
     private ClassEntry? _selectedClass;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGenerationForm))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    [NotifyPropertyChangedFor(nameof(HasClassDetail))]
+    [NotifyPropertyChangedFor(nameof(ParentClassDisplayName))]
     private ClassDetailViewModel? _classDetail;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowGenerationForm))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyState))]
+    [NotifyPropertyChangedFor(nameof(ParentClassDisplayName))]
+    [NotifyPropertyChangedFor(nameof(FormTitle))]
+    [NotifyPropertyChangedFor(nameof(CreateButtonLabel))]
+    [NotifyPropertyChangedFor(nameof(ShowUStructOption))]
+    [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
+    private bool _isStandaloneMode;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FormTitle))]
+    [NotifyPropertyChangedFor(nameof(CreateButtonLabel))]
+    [NotifyPropertyChangedFor(nameof(ShowUStructOption))]
+    private bool _isStandaloneStruct;
+
+    [ObservableProperty]
+    private bool _isUStruct;
+
+    public bool ShowGenerationForm => ClassDetail is not null || IsStandaloneMode;
+    public bool ShowEmptyState     => ClassDetail is null && !IsStandaloneMode;
+    public bool HasClassDetail     => ClassDetail is not null;
+    public bool ShowUStructOption  => IsStandaloneMode && IsStandaloneStruct;
+    public string ParentClassDisplayName => ClassDetail?.Entry.ClassName ?? (IsStandaloneMode ? "None" : string.Empty);
+    public string FormTitle        => IsStandaloneMode && IsStandaloneStruct ? "New Struct" : "New Class";
+    public string CreateButtonLabel => IsStandaloneMode && IsStandaloneStruct ? "Create Struct" : "Create Class";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CreateClassCommand))]
@@ -137,6 +168,12 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedClassChanged(ClassEntry? value)
     {
+        if (value is not null)
+        {
+            _isStandaloneMode = false;
+            _isStandaloneStruct = false;
+        }
+
         ClassDetail = value is not null && _index is not null
             ? new ClassDetailViewModel(value, _index, entry => SelectedClass = entry)
             : null;
@@ -278,6 +315,27 @@ public partial class MainViewModel : ObservableObject
     private void SelectClass(ClassEntry entry) => SelectedClass = entry;
 
     [RelayCommand]
+    private void NewStandaloneClass()
+    {
+        IsStandaloneMode = true;
+        IsStandaloneStruct = false;
+        SelectedClass = null;
+        _requiredPrefix = null;
+        UpdateClassNameWarning();
+    }
+
+    [RelayCommand]
+    private void NewStandaloneStruct()
+    {
+        IsStandaloneMode = true;
+        IsStandaloneStruct = true;
+        IsUStruct = false;
+        SelectedClass = null;
+        _requiredPrefix = null;
+        UpdateClassNameWarning();
+    }
+
+    [RelayCommand]
     private void BrowseOutputPath()
     {
         string? folder = RequestFolderPick?.Invoke();
@@ -288,7 +346,8 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanCreateClass))]
     private async Task CreateClassAsync()
     {
-        if (SelectedClass is null || SelectedProject is null) return;
+        if (SelectedProject is null) return;
+        if (!IsStandaloneMode && SelectedClass is null) return;
 
         IsBusy = true;
         StatusMessage = "Creating files...";
@@ -299,9 +358,11 @@ public partial class MainViewModel : ObservableObject
                 NewClassName,
                 Description,
                 OutputPath,
-                SelectedClass,
+                IsStandaloneMode ? null : SelectedClass,
                 ProjectName: SelectedProject.ProjectName,
                 CompanyName: _settings.CompanyName,
+                IsStruct: IsStandaloneMode && IsStandaloneStruct,
+                IsUStruct: IsStandaloneMode && IsStandaloneStruct && IsUStruct,
                 ProjectDirectory: SelectedProject.ProjectDirectory);
 
             await _generator.GenerateAsync(request);
@@ -330,7 +391,7 @@ public partial class MainViewModel : ObservableObject
     private bool CanCreateClass() =>
         !string.IsNullOrWhiteSpace(NewClassName) &&
         string.IsNullOrEmpty(ClassNameWarning) &&
-        SelectedClass is not null &&
+        (SelectedClass is not null || IsStandaloneMode) &&
         !string.IsNullOrWhiteSpace(OutputPath) &&
         !IsBusy;
 

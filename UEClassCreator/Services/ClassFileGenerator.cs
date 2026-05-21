@@ -9,9 +9,11 @@ public record GenerationRequest(
     string ClassName,
     string Description,
     string OutputPath,
-    ClassEntry ParentClass,
+    ClassEntry? ParentClass,
     string ProjectName,
     string CompanyName,
+    bool IsStruct = false,
+    bool IsUStruct = false,
     string? CustomCopyright = null,
     string ProjectDirectory = ""
 );
@@ -61,9 +63,11 @@ public class ClassFileGenerator
         Directory.CreateDirectory(headerPath);
 
         string fileName = GetFileName(request.ClassName);
-        bool isStruct = request.ParentClass.ClassName.Length > 1
-            && request.ParentClass.ClassName[0] == 'F'
-            && char.IsUpper(request.ParentClass.ClassName[1]);
+        bool isStruct = request.IsStruct
+            || (request.ParentClass is { } pc
+                && pc.ClassName.Length > 1
+                && pc.ClassName[0] == 'F'
+                && char.IsUpper(pc.ClassName[1]));
 
         if (isStruct)
         {
@@ -102,22 +106,25 @@ public class ClassFileGenerator
     internal Dictionary<string, object> BuildData(GenerationRequest request, string? headerPath = null)
     {
         string fileName = GetFileName(request.ClassName);
-        bool isUClass = UClassPrefixRegex.IsMatch(request.ParentClass.ClassName);
-        bool isGameModule = request.ParentClass.Source == EngineSource.GameProject;
+        bool hasParent = request.ParentClass is not null;
+        bool isUClass = hasParent && UClassPrefixRegex.IsMatch(request.ParentClass!.ClassName);
+        bool isGameModule = request.ParentClass?.Source == EngineSource.GameProject;
 
         var data = new Dictionary<string, object>
         {
             ["Class"] = request.ClassName,
             ["FileName"] = fileName,
-            ["ParentClass"] = request.ParentClass.ClassName,
-            ["ParentClassSource"] = ComputeParentClassSource(request, headerPath ?? request.OutputPath),
-            ["ModuleName"] = request.ParentClass.ModuleName,
+            ["ParentClass"] = request.ParentClass?.ClassName ?? string.Empty,
+            ["ParentClassSource"] = hasParent ? ComputeParentClassSource(request, headerPath ?? request.OutputPath) : string.Empty,
+            ["ModuleName"] = request.ParentClass?.ModuleName ?? string.Empty,
             ["ProjectName"] = request.ProjectName,
             ["ProjectCompany"] = request.CompanyName,
             ["Year"] = DateTime.Now.Year.ToString(),
             ["Description"] = string.IsNullOrWhiteSpace(request.Description) ? "TODO:" : request.Description,
             ["bIsUClass"] = isUClass,
             ["bIsGameModule"] = isGameModule,
+            ["bHasParent"] = hasParent,
+            ["bIsUStruct"] = isUClass || request.IsUStruct,
         };
 
         if (!string.IsNullOrWhiteSpace(request.CustomCopyright))
@@ -128,7 +135,7 @@ public class ClassFileGenerator
 
     private static string ComputeParentClassSource(GenerationRequest request, string fromPath)
     {
-        string parentDir = Path.GetDirectoryName(request.ParentClass.HeaderPath) ?? string.Empty;
+        string parentDir = Path.GetDirectoryName(request.ParentClass!.HeaderPath) ?? string.Empty;
         string relative = Path.GetRelativePath(fromPath, parentDir);
         return relative.Replace('\\', '/').TrimEnd('/') + "/" + Path.GetFileName(request.ParentClass.HeaderPath);
     }

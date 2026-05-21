@@ -74,6 +74,29 @@
                     </DockPanel>
                 </Border>
 
+                <!-- Quick create buttons -->
+                <Border DockPanel.Dock="Top" Padding="8 8" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="New Class"
+                                    Padding="0 6"
+                                    Command="{Binding NewStandaloneClassCommand}"/>
+                            <Button Grid.Column="2" Content="New Struct"
+                                    Padding="0 6"
+                                    Command="{Binding NewStandaloneStructCommand}"/>
+                        </Grid>
+                        <TextBlock Text="or pick a base class"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{StaticResource BrushTextDisabled}"
+                                   FontSize="11" Margin="0 6 0 0"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- Search box -->
                 <Border DockPanel.Dock="Top" Padding="8 6" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
                     <Grid>
@@ -147,20 +170,10 @@
                 <StackPanel Margin="24 20">
 
                     <!-- Empty state -->
-                    <TextBlock Text="Select a class from the list to get started."
+                    <TextBlock Text="Select a class or use New Class / New Struct above."
                                Foreground="{StaticResource BrushTextSecondary}"
-                               FontSize="14" Margin="0 40 0 0" HorizontalAlignment="Center">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ClassDetail}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                               FontSize="14" Margin="0 40 0 0" HorizontalAlignment="Center"
+                               Visibility="{Binding ShowEmptyState, Converter={StaticResource BoolToVis}}"/>
 
                     <!-- Class detail (visible when a class is selected) -->
                     <StackPanel DataContext="{Binding ClassDetail}">
@@ -261,10 +274,15 @@
                                 Command="{Binding DataContext.ClassDetail.ShowAllSubclassesCommand,
                                           RelativeSource={RelativeSource AncestorType=Window}}"/>
 
-                        <Separator Margin="0 12"/>
+                    </StackPanel>
 
-                        <!-- Generation form -->
-                        <TextBlock Text="New Class" FontSize="16" FontWeight="SemiBold" Margin="0 0 0 14"/>
+                    <!-- Generation form (visible when a class is selected OR in standalone mode) -->
+                    <StackPanel Visibility="{Binding ShowGenerationForm, Converter={StaticResource BoolToVis}}">
+
+                        <Separator Margin="0 12"
+                                   Visibility="{Binding HasClassDetail, Converter={StaticResource BoolToVis}}"/>
+
+                        <TextBlock Text="{Binding FormTitle}" FontSize="16" FontWeight="SemiBold" Margin="0 0 0 14"/>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -285,26 +303,21 @@
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Parent Class"
                                        VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
                             <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{Binding Entry.ClassName}"
-                                       VerticalAlignment="Center" FontWeight="SemiBold"
-                                       DataContext="{Binding DataContext.ClassDetail,
-                                                    RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                       Text="{Binding ParentClassDisplayName}"
+                                       VerticalAlignment="Center" FontWeight="SemiBold"/>
 
                             <!-- Class name -->
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Class Name"
                                        VerticalAlignment="Top" Margin="0 6 0 0" Foreground="{StaticResource BrushTextSecondary}"/>
                             <StackPanel Grid.Row="2" Grid.Column="1">
                                 <TextBox x:Name="ClassNameBox"
-                                         Text="{Binding DataContext.NewClassName, UpdateSourceTrigger=PropertyChanged,
-                                                RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                         Text="{Binding NewClassName, UpdateSourceTrigger=PropertyChanged}"/>
                                 <TextBlock Foreground="#E07B00" FontSize="11" Margin="2 3 0 0"
-                                           Text="{Binding DataContext.ClassNameWarning,
-                                                  RelativeSource={RelativeSource AncestorType=Window}}">
+                                           Text="{Binding ClassNameWarning}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
-                                                <DataTrigger Binding="{Binding DataContext.ClassNameWarning,
-                                                             RelativeSource={RelativeSource AncestorType=Window}}" Value="">
+                                                <DataTrigger Binding="{Binding ClassNameWarning}" Value="">
                                                     <Setter Property="Visibility" Value="Collapsed"/>
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -317,32 +330,32 @@
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Description"
                                        VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
                             <TextBox Grid.Row="4" Grid.Column="1"
-                                     Text="{Binding DataContext.Description, UpdateSourceTrigger=PropertyChanged,
-                                            RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                     Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
 
                             <!-- Output path -->
                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Output Path"
                                        VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/>
                             <DockPanel Grid.Row="6" Grid.Column="1">
                                 <Button DockPanel.Dock="Right" Content="…" Width="32" Margin="6 0 0 0"
-                                        Command="{Binding DataContext.BrowseOutputPathCommand,
-                                                  RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                <TextBox Text="{Binding DataContext.OutputPath, UpdateSourceTrigger=PropertyChanged,
-                                                RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                        Command="{Binding BrowseOutputPathCommand}"/>
+                                <TextBox Text="{Binding OutputPath, UpdateSourceTrigger=PropertyChanged}"/>
                             </DockPanel>
                         </Grid>
 
-                        <StackPanel Orientation="Horizontal" Margin="0 16 0 0">
-                            <Button Content="Create Class"
+                        <CheckBox Content="USTRUCT (add USTRUCT macro and GENERATED_BODY)"
+                                  Margin="0 14 0 0"
+                                  IsChecked="{Binding IsUStruct}"
+                                  Visibility="{Binding ShowUStructOption, Converter={StaticResource BoolToVis}}"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0 12 0 0">
+                            <Button Content="{Binding CreateButtonLabel}"
                                     Padding="20 8"
                                     Style="{StaticResource AccentButton}"
-                                    Command="{Binding DataContext.CreateClassCommand,
-                                              RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    Command="{Binding CreateClassCommand}"/>
                             <CheckBox Content="Open in Explorer"
                                       Margin="14 0 0 0"
                                       VerticalAlignment="Center"
-                                      IsChecked="{Binding DataContext.OpenInExplorerAfterCreate,
-                                                  RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                      IsChecked="{Binding OpenInExplorerAfterCreate}"/>
                         </StackPanel>
 
                     </StackPanel>
