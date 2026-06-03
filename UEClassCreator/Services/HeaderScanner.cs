@@ -9,7 +9,7 @@ public class HeaderScanner
 {
     // Tested regex from old tool — matches class/struct declarations, not commented lines, not forward declarations
     private static readonly Regex HeaderRegex = new(
-        @"^(?!\s*\/\/*\s*)(?:\s*(class|struct)\s*\w*\s+)([UAF]\w+)(?:\s*:\s*public\s+)?(\w*)(?:,\s+\w+\s+\w+)*$(?!;)",
+        @"^(?!\s*\/\/*\s*)(?:\s*(class|struct)\s*\w*\s+)([UAF]\w+)(?:\s*:\s*public\s+)?(\w*)(?:,\s+\w+\s+\w+)*(?:\s*//.*)?$(?!;)",
         RegexOptions.Compiled | RegexOptions.Multiline);
 
     public async Task<List<ClassEntry>> ScanAsync(

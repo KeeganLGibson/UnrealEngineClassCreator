@@ -72,6 +72,17 @@ public class HeaderScannerTests
     }
 
     [Fact]
+    public void ParseHeader_TrailingLineComment_ReturnsEntry()
+    {
+        // Trailing comments like "// UModelComponent" after the parent class name were
+        // preventing the end-of-line anchor from matching, silently dropping the class.
+        string content = "class SHADERWORLD_API UShaderWorldCollisionComponent : public UPrimitiveComponent // UModelComponent\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.GameProject).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("UShaderWorldCollisionComponent", results[0].ClassName);
+        Assert.Equal("UPrimitiveComponent", results[0].ParentClass);
+    }
     public void ParseHeader_MultipleClasses_ReturnsAll()
     {
         string content = """
