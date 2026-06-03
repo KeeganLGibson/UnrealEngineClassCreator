@@ -83,6 +83,67 @@ public class HeaderScannerTests
         Assert.Equal("UShaderWorldCollisionComponent", results[0].ClassName);
         Assert.Equal("UPrimitiveComponent", results[0].ParentClass);
     }
+
+    [Fact]
+    public void ParseHeader_MultipleInheritance_ReturnsPrimaryParentOnly()
+    {
+        // UE classes often implement interfaces as secondary bases e.g. ", public IAbilitySystemInterface".
+        // Only the first (primary) parent is captured; additional bases are consumed but not stored.
+        string content = "class ENGINE_API AMyActor : public AActor, public IMyInterface\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.LauncherInstall).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("AMyActor", results[0].ClassName);
+        Assert.Equal("AActor", results[0].ParentClass);
+    }
+
+    // --- Multi-line declarations ---
+
+    [Fact]
+    public void ParseHeader_ColonAtEndOfLine_ReturnsEntry()
+    {
+        string content = "class ENGINE_API AMyActor :\n    public AActor\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.LauncherInstall).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("AMyActor", results[0].ClassName);
+        Assert.Equal("AActor", results[0].ParentClass);
+    }
+
+    [Fact]
+    public void ParseHeader_ColonAtStartOfNextLine_ReturnsEntry()
+    {
+        string content = "class ENGINE_API AMyActor\n    : public AActor\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.LauncherInstall).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("AMyActor", results[0].ClassName);
+        Assert.Equal("AActor", results[0].ParentClass);
+    }
+
+    [Fact]
+    public void ParseHeader_MultipleInheritance_CommaAtEndOfLine_ReturnsPrimaryParent()
+    {
+        string content = "class ENGINE_API AMyActor : public AActor,\n    public IMyInterface\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.LauncherInstall).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("AMyActor", results[0].ClassName);
+        Assert.Equal("AActor", results[0].ParentClass);
+    }
+
+    [Fact]
+    public void ParseHeader_MultipleInheritance_CommaAtStartOfNextLine_ReturnsPrimaryParent()
+    {
+        string content = "class ENGINE_API AMyActor : public AActor\n    , public IMyInterface\n{\n};";
+        var results = HeaderScanner.ParseHeader(content, FakePath, EngineSource.LauncherInstall).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("AMyActor", results[0].ClassName);
+        Assert.Equal("AActor", results[0].ParentClass);
+    }
+
+    [Fact]
     public void ParseHeader_MultipleClasses_ReturnsAll()
     {
         string content = """
