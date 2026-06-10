@@ -6,6 +6,16 @@ A fast, offline Windows desktop tool for generating Unreal Engine C++ class boil
 
 ---
 
+## Why I Built This
+
+Unreal Engine's built-in class wizard means booting the editor just to create a couple of files — on a large project that can mean waiting several minutes before you've written a single line of code.
+
+Beyond the wait, I wanted the generated files to actually reflect how my team writes code: a consistent include ordering, a clean file header, and a structure we'd agreed on — not the engine's generic default. And I wanted that style to be configurable per project rather than hardcoded, so different projects or teams could have their own conventions without maintaining a fork.
+
+The result is a standalone tool that stays open alongside the editor, lets you search the full class hierarchy instantly, and writes files exactly the way your project expects them.
+
+---
+
 ## Features
 
 - Fast as-you-type search across all engine, plugin, and project classes
