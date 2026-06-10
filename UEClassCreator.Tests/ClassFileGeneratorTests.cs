@@ -112,6 +112,25 @@ public class ClassFileGeneratorTests
         Assert.DoesNotContain('\\', source);
     }
 
+    [Theory]
+    // Public/Private layout → relative to that directory
+    [InlineData(@"C:/Engine/Source/Runtime/Engine/Public/GameFramework/Actor.h",  @"C:/Game/Source/MyGame/Public",          "GameFramework/Actor.h")]
+    [InlineData(@"C:/Engine/Source/Runtime/Engine/Public/Actor.h",                @"C:/Game/Source/MyGame/Public",          "Actor.h")]
+    [InlineData(@"C:/Game/Source/MyGame/Public/Combat/WeaponBase.h",              @"C:/Game/Source/MyGame/Public",          "Combat/WeaponBase.h")]
+    [InlineData(@"C:/Engine/Source/Runtime/Engine/Private/GameFramework/Actor.h", @"C:/Game/Source/MyGame/Public",          "GameFramework/Actor.h")]
+    // Flat layout (no Public/Private) → relative to Source/{Module}/
+    [InlineData(@"C:/Game/Source/MyGame/Combat/WeaponBase.h",                     @"C:/Game/Source/MyGame",                "Combat/WeaponBase.h")]
+    [InlineData(@"C:/Game/Source/MyGame/WeaponBase.h",                            @"C:/Game/Source/OtherModule",           "WeaponBase.h")]
+    // Same output directory → just the filename
+    [InlineData(@"C:/Game/Source/MyGame/Combat/WeaponBase.h",                     @"C:/Game/Source/MyGame/Combat",         "WeaponBase.h")]
+    [InlineData(@"C:/Game/Source/MyGame/WeaponBase.h",                            @"C:/Game/Source/MyGame",                "WeaponBase.h")]
+    public void BuildData_ParentClassSource_ResolvesCorrectly(string headerPath, string outputPath, string expected)
+    {
+        var parent = EngineParent with { HeaderPath = headerPath };
+        var data = new ClassFileGenerator().BuildData(MakeRequest(parent: parent, outputPath: outputPath));
+        Assert.Equal(expected, (string)data["ParentClassSource"]);
+    }
+
     // --- ResolveOutputPaths ---
 
     [Theory]

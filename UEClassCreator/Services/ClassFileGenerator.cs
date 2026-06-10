@@ -135,9 +135,44 @@ public class ClassFileGenerator
 
     private static string ComputeParentClassSource(GenerationRequest request, string fromPath)
     {
-        string parentDir = Path.GetDirectoryName(request.ParentClass!.HeaderPath) ?? string.Empty;
+        string headerPath = request.ParentClass!.HeaderPath;
+        string normalized = headerPath.Replace('\\', '/');
+        string[] parts = normalized.Split('/');
+        string fileName = parts[^1];
+        string headerDir = string.Join("/", parts[..^1]);
+        string fromNormalized = fromPath.Replace('\\', '/').TrimEnd('/');
+
+        // Same directory as output → no path prefix needed.
+        if (headerDir.Equals(fromNormalized, StringComparison.OrdinalIgnoreCase))
+            return fileName;
+
+        // Has a Public/Private segment → path relative to that directory.
+        for (int i = parts.Length - 1; i >= 1; i--)
+        {
+            if (parts[i].Equals("Public", StringComparison.OrdinalIgnoreCase) ||
+                parts[i].Equals("Private", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Join("/", parts[(i + 1)..]);
+            }
+        }
+
+        // No Public/Private → path relative to Source/{Module}/ (the module root).
+        // UBT adds the module root to the include search path for flat-layout modules.
+        for (int i = 0; i < parts.Length - 2; i++)
+        {
+            if (parts[i].Equals("Source", StringComparison.OrdinalIgnoreCase))
+            {
+                int moduleContentStart = i + 2; // skip Source/ and ModuleName/
+                if (moduleContentStart < parts.Length)
+                    return string.Join("/", parts[moduleContentStart..]);
+                break;
+            }
+        }
+
+        // Fallback: filesystem-relative path from the output directory.
+        string parentDir = Path.GetDirectoryName(headerPath) ?? string.Empty;
         string relative = Path.GetRelativePath(fromPath, parentDir);
-        return relative.Replace('\\', '/').TrimEnd('/') + "/" + Path.GetFileName(request.ParentClass.HeaderPath);
+        return relative.Replace('\\', '/').TrimEnd('/') + "/" + fileName;
     }
 
     internal static string GetFileName(string className)
