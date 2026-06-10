@@ -1,7 +1,7 @@
 ---
 title: Templates
-render_with_liquid: false
 ---
+{% raw %}
 
 # Templates
 
@@ -249,3 +249,5 @@ private:
 
 // Implementation
 ```
+
+{% endraw %}
