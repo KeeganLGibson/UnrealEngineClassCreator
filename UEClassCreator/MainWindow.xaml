@@ -84,6 +84,21 @@
                 </StackPanel>
             </StatusBarItem>
 
+            <!-- Docs link -->
+            <StatusBarItem DockPanel.Dock="Right" Padding="0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Separator Style="{StaticResource {x:Static StatusBar.SeparatorStyleKey}}"/>
+                    <Button Content="Docs"
+                            Style="{StaticResource LinkButton}"
+                            Command="{Binding OpenDocsCommand}"
+                            Cursor="Hand"
+                            FontSize="12"
+                            Foreground="White"
+                            Padding="8 2"
+                            ToolTip="Open documentation"/>
+                </StackPanel>
+            </StatusBarItem>
+
             <!-- Status message (fills remaining space) -->
             <StatusBarItem Content="{Binding StatusMessage}"/>
         </StatusBar>

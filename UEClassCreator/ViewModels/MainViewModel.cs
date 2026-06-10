@@ -305,6 +305,10 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenDocs() =>
+        Process.Start(new ProcessStartInfo("https://keeganlgibson.github.io/UnrealEngineClassCreator/") { UseShellExecute = true });
+
+    [RelayCommand]
     private async Task AddProjectAsync()
     {
         string? path = RequestProjectPick?.Invoke();
