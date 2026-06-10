@@ -26,19 +26,13 @@ The result is a standalone tool that stays open alongside the editor, lets you s
 
 ## Features
 
-- **Fast as-you-type search** — filters the full engine and project class index instantly as you type, matching both class name and parent class name
-- **Inheritance context** — selecting a class shows its full ancestry chain and up to 5 direct subclasses; every entry is clickable to navigate the hierarchy
-- **Common classes pinned** — when search is empty, `AActor`, `APawn`, `ACharacter`, `AGameModeBase`, `APlayerController`, `UActorComponent`, `USceneComponent`, `UObject`, `UUserWidget`, `UGameInstance`, `UGameInstanceSubsystem`, and `UWorldSubsystem` appear at the top
-- **UObject-only filter** — checkbox to narrow results to `UObject`-derived classes
-- **Standalone class/struct creation** — create a class or struct with no parent class when you need a plain C++ type
-- **Automatic engine discovery** — resolves engines from co-located source builds, registry, and `LauncherInstalled.dat`
-- **Game project and plugin scanning** — indexes your project's `Source/` and `Plugins/` directories alongside the engine
-- **Smart Public/Private output routing** — automatically places `.h` in the `Public` branch and `.cpp` in `Private` based on your chosen path
-- **Mustache templates** — generates `.h` + `.cpp` pairs with correct `#include` paths, `UCLASS()`, `GENERATED_BODY()`, and module-aware include ordering
-- **Per-project template overrides** — drop custom templates into `{ProjectDir}/build/ClassCreator/` to override defaults for that project
-- **Persistent settings** — remembers your last output path and selected class per project
-- **Class name prefix hints** — warns if your class name is missing the expected `A` or `U` prefix for the selected parent type
-- **Update notifications** — checks GitHub releases at startup and shows a banner when a newer version is available
+- **Fast as-you-type search** — filters the full engine and project class index instantly, matching on both class name and parent class name
+- **Inheritance context** — selecting a class shows its full ancestry chain and direct subclasses; every entry is clickable to navigate the hierarchy
+- **Common classes pinned** — when search is empty, the classes you reach for most (`AActor`, `ACharacter`, `UActorComponent`, `UObject`, etc.) appear at the top
+- **Mustache templates** — generates `.h` + `.cpp` pairs with correct `#include` paths, `UCLASS()`, `GENERATED_BODY()`, and module-aware include ordering; drop custom templates into `{ProjectDir}/build/ClassCreator/` to override defaults per project
+- **Smart Public/Private routing** — automatically places `.h` in `Public` and `.cpp` in `Private` based on whichever branch you pick as the output path
+- **Automatic engine and project discovery** — resolves installed and source-built engines from the registry and `LauncherInstalled.dat`; scans your project's `Source/` and `Plugins/` directories alongside the engine
+- **Standalone class/struct creation** — create a plain C++ class or struct with no parent when you need one
 - **Fully offline** — no network dependency beyond the optional update check
 
 ---

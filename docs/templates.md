@@ -5,13 +5,11 @@ title: Templates
 
 # Templates
 
-Files are generated using [Mustache](https://mustache.github.io/) templates via [Stubble](https://github.com/StubbleOrg/Stubble). See the [Mustache manual](https://mustache.github.io/mustache.5.html) for the full syntax reference — sections (`{{#var}}`…`{{/var}}`), inverted sections (`{{^var}}`), and variable substitution (`{{var}}`) are the main constructs used here.
-
----
+Files are generated using [Mustache](https://mustache.github.io/) templates via [Stubble](https://github.com/StubbleOrg/Stubble). The main constructs are variable substitution (`{{var}}`), sections (`{{#var}}`…`{{/var}}`), and inverted sections (`{{^var}}`). See the [Mustache manual](https://mustache.github.io/mustache.5.html) for the full syntax reference.
 
 ## Default Templates
 
-Three templates ship with the tool. They live in the `Templates/` folder of the installation and can be overridden per-project (see [Per-Project Overrides](#per-project-overrides) below).
+Three templates ship with the tool, living in the `Templates/` folder of the installation. All three can be overridden per project (see [Per-Project Overrides](#per-project-overrides) below).
 
 ### Header.mustache
 
@@ -140,8 +138,6 @@ USTRUCT()
 };
 ```
 
----
-
 ## Per-Project Overrides
 
 Drop custom versions of any template into:
@@ -152,9 +148,7 @@ Drop custom versions of any template into:
 {ProjectDir}/build/ClassCreator/Struct.mustache
 ```
 
-The tool checks this location first and falls back to the bundled templates if no override is found. Only the templates you place there are overridden — you do not need to provide all three.
-
----
+The tool checks this location first and falls back to the bundled templates if no override is present. You only need to provide the templates you actually want to change.
 
 ## Template Variables
 
@@ -174,8 +168,6 @@ The tool checks this location first and falls back to the bundled templates if n
 | `bHasParent` | bool | `true` when a parent class was selected |
 | `bIsGameModule` | bool | `true` if the parent class is from the game project — affects include section ordering |
 | `CustomCopyright` | string | Optional copyright line override; replaces the default project/company header block when present |
-
----
 
 ## Generated File Structure
 
