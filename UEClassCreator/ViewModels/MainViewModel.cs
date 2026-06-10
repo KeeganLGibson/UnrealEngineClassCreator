@@ -103,6 +103,7 @@ public partial class MainViewModel : ObservableObject
     private string _description = string.Empty;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveProjectCommand))]
     private UProjectEntry? _selectedProject;
 
     [ObservableProperty]
@@ -340,6 +341,38 @@ public partial class MainViewModel : ObservableObject
         if (SelectedProject is null) return;
         await LoadProjectAsync(SelectedProject, forceRescan: true);
     }
+
+    [RelayCommand(CanExecute = nameof(CanRemoveProject))]
+    private void RemoveProject()
+    {
+        if (SelectedProject is null) return;
+
+        var toRemove = SelectedProject;
+        _scanCts?.Cancel();
+
+        _settings.LastOutputPaths.Remove(toRemove.UProjectPath);
+        _settings.LastSelectedClasses.Remove(toRemove.UProjectPath);
+        _settingsService.Save(_settings);
+
+        int index = AvailableProjects.IndexOf(toRemove);
+        AvailableProjects.Remove(toRemove);
+        _projectPersistence.Save(AvailableProjects.Select(p => p.UProjectPath));
+
+        if (AvailableProjects.Count > 0)
+        {
+            SelectedProject = AvailableProjects[Math.Min(index, AvailableProjects.Count - 1)];
+        }
+        else
+        {
+            SelectedProject = null;
+            _index = null;
+            FilteredResults.Clear();
+            IsBusy = false;
+            StatusMessage = "Add a project to get started.";
+        }
+    }
+
+    private bool CanRemoveProject() => SelectedProject is not null;
 
     [RelayCommand]
     private void SelectClass(ClassEntry entry) => SelectedClass = entry;

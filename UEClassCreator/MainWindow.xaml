@@ -101,17 +101,7 @@
 
                 <!-- Engine picker -->
                 <Border DockPanel.Dock="Top" Padding="10 8" BorderBrush="{StaticResource BrushSeparator}" BorderThickness="0 0 0 1">
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right"
-                                Content="↺ Rescan"
-                                Padding="8 4" Margin="6 0 0 0"
-                                ToolTip="Rescan all headers for the selected project"
-                                Command="{Binding RescanCommand}"/>
-                        <Button DockPanel.Dock="Right"
-                                Content="+ Project"
-                                Padding="8 4" Margin="6 0 0 0"
-                                ToolTip="Add an Unreal project"
-                                Command="{Binding AddProjectCommand}"/>
+                    <StackPanel>
                         <ComboBox ItemsSource="{Binding AvailableProjects}"
                                   SelectedItem="{Binding SelectedProject}">
                             <ComboBox.ItemTemplate>
@@ -126,7 +116,24 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                    </DockPanel>
+                        <DockPanel Margin="0 6 0 0">
+                            <Button DockPanel.Dock="Left"
+                                    Content="+ Project"
+                                    Padding="8 4"
+                                    ToolTip="Add an Unreal project"
+                                    Command="{Binding AddProjectCommand}"/>
+                            <Button DockPanel.Dock="Left"
+                                    Content="− Remove"
+                                    Padding="8 4" Margin="6 0 0 0"
+                                    ToolTip="Remove this project from the list"
+                                    Command="{Binding RemoveProjectCommand}"/>
+                            <Button DockPanel.Dock="Right"
+                                    Content="↺ Rescan"
+                                    Padding="8 4" Margin="6 0 0 0"
+                                    ToolTip="Rescan all headers for the selected project"
+                                    Command="{Binding RescanCommand}"/>
+                        </DockPanel>
+                    </StackPanel>
                 </Border>
 
                 <!-- Company Name -->
