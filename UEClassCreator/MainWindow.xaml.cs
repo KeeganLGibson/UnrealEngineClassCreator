@@ -57,13 +57,13 @@ namespace UEClassCreator
         private void RestoreWindowGeometry()
         {
             var settings = _settingsService.Load();
-            Width  = settings.WindowWidth;
-            Height = settings.WindowHeight;
+            Width  = Math.Max(10.0, settings.WindowWidth);
+            Height = Math.Max(10.0, settings.WindowHeight);
 
             if (!double.IsNaN(settings.WindowLeft) && !double.IsNaN(settings.WindowTop))
             {
-                Left = settings.WindowLeft;
-                Top  = settings.WindowTop;
+                Left = Math.Max(0.0, settings.WindowLeft);
+                Top  = Math.Max(0.0, settings.WindowTop);
                 WindowStartupLocation = WindowStartupLocation.Manual;
             }
         }
